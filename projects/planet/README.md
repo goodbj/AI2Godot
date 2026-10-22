@@ -2,42 +2,85 @@
 
 太空版「大鱼吃小鱼」：从一颗小陨石开始，靠引力吸收周围的碎石不断长大，
 依次演化 **陨石 → 流星 → 行星 → 恒星 → 白矮星 → 黑洞**。
+成为黑洞后，整片星域都会被吞进去。
+
+支持 **桌面（键鼠）** 与 **手机（触屏摇杆）** 两种操作，UI 按屏幕尺寸自动缩放。
 
 ## 运行
 
 ```bash
-# 用编辑器打开
+# 编辑器
 Godot_v4.7.2-stable_win64.exe --path projects/planet -e
 
-# 直接跑
+# 直接运行
 Godot_v4.7.2-stable_win64.exe --path projects/planet
+
+# 模拟手机分辨率
+Godot_v4.7.2-stable_win64.exe --path projects/planet --resolution 390x844
 ```
 
 ## 操作
 
-| 输入 | 作用 |
+| 平台 | 操作 |
 |---|---|
-| `WASD` / 方向键 | 移动（屏幕相对方向） |
-| `Esc` | 退出 |
-| `R` | 死亡后重开 |
+| 桌面 | `WASD` / 方向键移动 |
+| 手机 | 按住屏幕左半边拖动，虚拟摇杆控制方向 |
+| 通用 | `Esc` 退出，死亡后 `R` 重开 |
 
 ## 玩法
 
 - 靠近比你**小**的碎片会把它吸进来，质量增加。
-- 撞到比你**大**的碎片会掉质量；陨石阶段质量归零就结束。
-- 大小接近的会互相弹开。
-- 质量跨过阈值就进入下一演化阶段，外观随之变化。
+- 撞到比你**大**的碎片会掉质量；掉到 0.4 以下且还在陨石阶段就结束。
+  掉血量与体型差成正比，只是稍大一点的石头只会磕掉一点，不会秒杀。
+- 大小接近（差距 < 1.12 倍）的会互相弹开。
+- 质量跨过阈值就进入下一演化阶段，外观与 HUD 同步变化。
 
 ### 演化阶梯
 
 | 阶段 | 名称 | 质量阈值 |
 |---|---|---|
 | 0 | Asteroid 陨石 | 0 |
-| 1 | Meteor 流星 | 5 |
-| 2 | Planet 行星 | 22 |
-| 3 | Star 恒星 | 70 |
-| 4 | White Dwarf 白矮星 | 180 |
-| 5 | Black Hole 黑洞 | 400 |
+| 1 | Meteor 流星 | 8 |
+| 2 | Planet 行星 | 45 |
+| 3 | Star 恒星 | 160 |
+| 4 | White Dwarf 白矮星 | 420 |
+| 5 | Black Hole 黑洞 | 900 |
+
+### 掠夺者（Rival）
+
+场上还有和你竞争的其它天体，各有颜色（锈红 / 琥珀 / 紫 / 青 / 品红）：
+
+- 它们也会吞碎片长大，同样能演化到黑洞。
+- 它们会**主动追杀**比自己小的目标（包括你），并**逃离**比自己大的。
+- 你比它大 → 撞上去可以吞掉它，一次性获得大量质量。
+- 它比你大 → 撞上去会被它吞掉。
+- 开局有保护期：玩家质量达到 6 之前不会刷掠夺者，
+  且开局碎片全部可吃，保证每次都有起跑空间。
+
+## 移动端适配
+
+- 渲染器切到 `mobile`（Forward Mobile），`project.godot` 里已配置。
+- 相机 `keep_aspect = KEEP_WIDTH`，竖屏手机能看到和横屏桌面一样的横向视野。
+- HUD 按 `min(屏宽, 屏高) / 720` 缩放，字号与边距在手机上自动收小。
+- 触屏摇杆只在实际有触摸屏的设备上显示，桌面端不出现。
+- 屏幕左上角的 `II` 按钮暂停。
+
+### 导出
+
+`export_presets.cfg` 已预置两个预设：
+
+- **Android** → `build/planet.apk`（包名 `com.goodbj.planet`，arm64）
+- **Web** → `build/web/index.html`
+
+导出 Android 需要先装 Android SDK + JDK，并在 Godot 编辑器里配置路径：
+
+```bash
+# 装好后命令行导出
+Godot_v4.7.2-stable_win64_console.exe --headless --path projects/planet \
+  --export-debug "Android" build/planet.apk
+```
+
+Web 导出不需要额外 SDK，可直接在手机上用浏览器打开测试。
 
 ## 实现要点
 
@@ -46,43 +89,56 @@ Godot_v4.7.2-stable_win64.exe --path projects/planet
 `shaders/planet.gdshader` 一个着色器覆盖全部六个阶段，靠 `stage` uniform 切换：
 
 - **3D 值噪声 + FBM** 在球面方向上采样，生成无缝的大陆/海洋分布。
-- 高度值 `h` 走一条颜色渐变：深海 → 浅海 → 沙滩 → 草地 → 森林 → 岩石 → 雪。
+- 高度值走颜色渐变：深海 → 浅海 → 沙滩 → 草地 → 森林 → 岩石 → 雪。
 - **阶段覆盖**：
   - 陨石/流星：裸岩 + 陨石坑（噪声做环状凹陷）
   - 恒星：颗粒状对流 + 临边昏暗（limb darkening），避免渲染成一坨死白
   - 白矮星：蓝白高频噪声 + 强临边昏暗
   - 黑洞：黑色圆盘 + 边缘吸积盘辉光（`rim^7` 做锐利光环）
-- **大气辉光**用 fresnel 边缘光近似，不需要额外的壳层几何体。
+- 大气辉光用 fresnel 边缘光近似，不需要额外壳层几何体。
+- `tint` / `heat` 两个 uniform 给掠夺者染色并在追击时发红光，玩家和掠夺者共用同一个着色器。
 
 ### 生长与相机
 
-- 半径 `base + sqrt(mass) * k`，用 `sqrt` 让前期成长感明显、后期不至于爆炸。
-- 相机距离随半径线性拉远（`radius * 6.5 + 9`），保证任何阶段都在画面内。
+- 半径 `base + sqrt(mass) * k`，`sqrt` 让前期成长感明显、后期不至于爆炸。
+- 相机距离随半径线性拉远（`radius * 6.5 + 9`），任何阶段都在画面内。
 
 ### 引力与吞并
 
-- `world.gd` 每帧对每块碎片施加指向玩家的力，强度按距离衰减，在 `gravity_radius` 外失效。
-- 碰撞判定不是靠物理引擎，而是**手动算距离**：`dist < planet_radius + debris_radius` 就算接触。
-  这样规则明确、不依赖碰撞层配置，也避免了刚体互相弹飞的抖动。
-- 吞并条件是 `大的 >= 小的 * 1.12`，即必须明显更大才能吃；接近的会弹开。
+- `world.gd` 每帧对每块碎片施加指向玩家的力，强度按距离衰减，`gravity_radius` 外失效。
+- 碰撞判定不靠物理引擎，而是**手动算距离**：`dist < planet_radius + debris_radius` 即接触。
+  规则明确、不依赖碰撞层配置，也避免刚体互弹的抖动。
+- 吞并条件 `大的 >= 小的 * 1.12`：必须明显更大才能吃。
+
+### 黑洞终局
+
+质量到 900 后进入黑洞阶段，`world._consume_everything()` 接管：
+全场碎片与掠夺者被强力拖向玩家并逐个吞掉，直到星域清空。
 
 ## 开发辅助
 
-两个只在带参数时激活的脚本，用来让 AI 自己验证：
+只在带命令行参数时激活，正常运行无影响：
 
 ```bash
-# 截图某个演化阶段
-Godot_v4.7.2-stable_win64_console.exe --path . -- --stage=3 --shot --shot-path=E:/out.png
+# 截取某个演化阶段的画面
+... --path . -- --stage=3 --shot --shot-path=E:/out.png
 
 # 玩法自测：自动吃 18 秒，报告质量增长和阶段变化
-Godot_v4.7.2-stable_win64_console.exe --path . -- --selftest
+... --path . -- --selftest
+
+# 60 秒平衡性测试：报告存活、峰值质量、阶段序列
+... --path . -- --selftest-long
+
+# 强制刷出掠夺者，方便看外观
+... --path . -- --stage=3 --show-rival --shot --shot-path=E:/out.png
 ```
 
-`--selftest` 的输出形如：
+`--selftest-long` 的输出：
 
 ```
-[selftest] start mass=1.00
-[selftest] end mass=167.11 grew=true stages=[1, 2, 3]
+[selftest] start mass=1.00 duration=60s
+[selftest] end mass=1267.69 peak=1267.69 grew=true stages=[1, 2, 3, 4, 5]
+[selftest] debris=0 rivals=0 rivals_seen=2 note=survived
 [selftest] RESULT: PASS
 ```
 
@@ -91,15 +147,19 @@ Godot_v4.7.2-stable_win64_console.exe --path . -- --selftest
 ```
 projects/planet/
 ├── project.godot
+├── export_presets.cfg      # Android + Web 导出预设
 ├── scenes/
-│   ├── main.tscn      # 根场景：环境、灯光、相机
-│   └── planet.tscn    # 玩家星球
+│   ├── main.tscn           # 根场景：环境、灯光、相机
+│   └── planet.tscn         # 玩家星球
 ├── scripts/
-│   ├── main.gd        # 组装世界、处理重开
-│   ├── planet.gd      # 玩家：移动、生长、阶段、相机
-│   ├── debris.gd      # 碎片
-│   ├── world.gd       # 生成、引力、吞并规则
-│   ├── hud.gd         # 阶段名 / 质量显示
+│   ├── main.gd             # 组装世界、FX、触屏、重开
+│   ├── planet.gd           # 玩家：移动、生长、阶段、相机
+│   ├── rival.gd            # 掠夺者 AI：追击/逃跑/互相吞噬
+│   ├── debris.gd           # 碎片
+│   ├── world.gd            # 生成、引力、吞并规则、黑洞终局
+│   ├── fx.gd               # 粒子爆发、屏幕震动
+│   ├── hud.gd              # 响应式 HUD、阶段横幅、威胁提示
+│   ├── touch_controls.gd   # 虚拟摇杆 + 暂停
 │   ├── dev_screenshot.gd
 │   └── selftest.gd
 └── shaders/

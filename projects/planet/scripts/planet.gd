@@ -25,7 +25,7 @@ const STAGE_NAMES := [
 ]
 
 ## Mass needed to reach each stage.
-const STAGE_THRESHOLDS := [0.0, 5.0, 22.0, 70.0, 180.0, 400.0]
+const STAGE_THRESHOLDS := [0.0, 8.0, 45.0, 160.0, 420.0, 900.0]
 
 @export var thrust_force := 26.0
 @export var max_speed := 34.0
@@ -38,6 +38,9 @@ const STAGE_THRESHOLDS := [0.0, 5.0, 22.0, 70.0, 180.0, 400.0]
 var mass_value := 1.0
 var stage := STAGE_ASTEROID
 var alive := true
+
+## Optional touch joystick, assigned by the game root.
+var touch_controls: CanvasLayer = null
 
 var _camera: Camera3D
 var _cam_offset := Vector3(0.0, 4.5, 11.0)
@@ -64,6 +67,11 @@ func _physics_process(delta: float) -> void:
 		Input.get_axis("ui_left", "ui_right"),
 		Input.get_axis("ui_up", "ui_down")
 	)
+	# Touch joystick overrides keyboard when active.
+	if touch_controls:
+		var tv: Vector2 = touch_controls.get_move_vector()
+		if tv.length() > 0.05:
+			input = tv
 	if input.length() > 1.0:
 		input = input.normalized()
 
@@ -123,10 +131,14 @@ func absorb(other_mass: float) -> void:
 
 
 func take_hit(other_mass: float) -> void:
-	mass_value = maxf(0.5, mass_value - other_mass * 0.55)
+	# Losing mass is proportional to the *gap* in size, not a flat fraction,
+	# so a barely-bigger rock chips you instead of one-shotting you.
+	var gap: float = maxf(other_mass - mass_value, 0.0)
+	var loss: float = minf(other_mass * 0.35, gap * 0.25 + mass_value * 0.18)
+	mass_value = maxf(0.35, mass_value - loss)
 	_after_mass_change()
 	_update_size()
-	if mass_value <= 0.6 and stage == STAGE_ASTEROID:
+	if mass_value <= 0.4 and stage == STAGE_ASTEROID:
 		die()
 
 
@@ -158,6 +170,11 @@ func _become_black_hole() -> void:
 	_is_black_hole = true
 	gravity_pull *= 2.5
 	gravity_radius *= 3.0
+
+
+## Endgame: everything on the field is dragged in and consumed.
+func is_black_hole() -> bool:
+	return _is_black_hole
 
 
 func die() -> void:

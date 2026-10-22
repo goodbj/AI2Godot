@@ -1,20 +1,43 @@
 extends Node3D
 
-## Game root: builds the world, wires the HUD, handles restart.
+## Game root: builds the world, wires the HUD and FX, handles restart.
 
 const PlanetScene := preload("res://scenes/planet.tscn")
 const WorldScript := preload("res://scripts/world.gd")
 const HUDScript := preload("res://scripts/hud.gd")
+const FXScript := preload("res://scripts/fx.gd")
+const TouchScript := preload("res://scripts/touch_controls.gd")
 
 var world: Node3D
 var planet: RigidBody3D
 var hud: CanvasLayer
+var fx: Node3D
+var camera: Camera3D
+var touch: CanvasLayer
+
+var _threat_timer := 0.0
+var _paused := false
 
 
 func _ready() -> void:
 	_setup_environment()
 	_spawn_world()
 	_apply_dev_args()
+	_setup_touch()
+
+
+func _setup_touch() -> void:
+	touch = TouchScript.new()
+	touch.name = "TouchControls"
+	add_child(touch)
+	touch.pause_pressed.connect(_toggle_pause)
+	if planet:
+		planet.touch_controls = touch
+
+
+func _toggle_pause() -> void:
+	_paused = not _paused
+	get_tree().paused = _paused
 
 
 ## Dev-only: `-- --stage=N` jumps the player to a given evolution stage so the
@@ -29,6 +52,11 @@ func _apply_dev_args() -> void:
 				planet.mass_value = target
 				planet._after_mass_change()
 				planet._update_size()
+		elif a == "--show-rival":
+			# Dev: force a rival into view for visual checks.
+			world.rival_grace_mass = 0.0
+			world.rival_respawn_delay = 0.01
+			world._rival_timer = 999.0
 
 
 func _setup_environment() -> void:
@@ -48,6 +76,10 @@ func _setup_environment() -> void:
 	env.ambient_light_color = Color(0.20, 0.26, 0.40)
 	env.ambient_light_energy = 0.55
 	env.tonemap_mode = Environment.TONE_MAPPER_ACES
+	env.glow_enabled = true
+	env.glow_intensity = 0.8
+	env.glow_bloom = 0.15
+	env.glow_blend_mode = Environment.GLOW_BLEND_MODE_ADDITIVE
 
 	var we := WorldEnvironment.new()
 	we.environment = env
@@ -60,12 +92,20 @@ func _setup_environment() -> void:
 	sun.shadow_enabled = true
 	add_child(sun)
 
+	camera = get_node_or_null("Camera3D") as Camera3D
+	if camera:
+		# Keep the horizontal field constant so a portrait phone sees as much
+		# of the play field as a landscape desktop.
+		camera.keep_aspect = Camera3D.KEEP_WIDTH
+
 
 func _spawn_world() -> void:
 	if world:
 		world.queue_free()
 	if planet:
 		planet.queue_free()
+	if hud:
+		hud.queue_free()
 
 	world = WorldScript.new()
 	world.name = "World"
@@ -76,9 +116,30 @@ func _spawn_world() -> void:
 
 	world.register_planet(planet)
 
+	fx = FXScript.new()
+	fx.name = "FX"
+	add_child(fx)
+	if camera:
+		fx.bind_camera(camera)
+	world.register_fx(fx)
+
 	hud = HUDScript.new()
 	add_child(hud)
 	hud.bind(planet)
+
+	_threat_timer = 0.0
+
+
+func _process(delta: float) -> void:
+	if world == null or planet == null or hud == null:
+		return
+	if not planet.alive:
+		return
+
+	_threat_timer += delta
+	if _threat_timer >= 0.25:
+		_threat_timer = 0.0
+		hud.update_threats(world.get("_rivals"), planet.mass_value)
 
 
 func _unhandled_input(event: InputEvent) -> void:

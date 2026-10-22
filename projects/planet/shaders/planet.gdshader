@@ -34,6 +34,10 @@ uniform float bump_strength = 0.35;
 
 uniform vec3 accretion_color : source_color = vec3(1.0, 0.45, 0.10);
 
+// ---- Rival tinting ----
+uniform vec3 tint : source_color = vec3(1.0, 1.0, 1.0);
+uniform float heat : hint_range(0.0, 1.0) = 0.0;
+
 varying vec3 obj_pos;
 
 vec3 hash3(vec3 p) {
@@ -153,6 +157,11 @@ void fragment() {
 	float bh = black_hole_amount;
 	albedo = mix(albedo, vec3(0.004, 0.004, 0.006), bh);
 	emission = mix(emission, bh_emission, bh);
+
+	// Rival bodies: tinted, with an angry glow that intensifies when hunting.
+	albedo *= tint;
+	emission *= tint;
+	emission += tint * heat * (0.25 + 0.55 * rim);
 
 	ALBEDO = albedo;
 	ROUGHNESS = mix(rough, 0.25, bh);
