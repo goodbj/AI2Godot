@@ -8,12 +8,26 @@
 
 ```
 AI2Godot/
-├── godot/          # Godot 工程与示例场景（.gd 脚本、tscn 场景）
+├── projects/       # 可运行的 Godot 工程
+│   └── planet/     # 星球演化游戏（大鱼吃小鱼）
+├── godot/          # 早期实验场景（保留）
 ├── ai/             # AI 相关脚本与工具（Python 辅助脚本、提示词、智能体配置）
 ├── docs/           # 调研笔记、方案对比、实验记录
+├── .mcp.json       # Godot MCP 桥配置（AI 直接操作 Godot）
 ├── .github/        # CI / 模板（可选）
 └── README.md
 ```
+
+## 已接入的基础设施
+
+- **Godot MCP 桥**：Claude 通过 MCP 直接操作 Godot 编辑器与工程（建场景、跑项目、抓报错）。
+  配置见 `.mcp.json`，接入过程与踩坑见 [docs/ai-godot-mcp.md](docs/ai-godot-mcp.md)。
+
+## 已完成的实验
+
+- **[planet](projects/planet/)** — 太空版大鱼吃小鱼。从陨石靠吸收碎石成长为
+  行星、恒星、白矮星，最终坍缩成黑洞。全程序化着色器，无外部美术资源。
+  带自测脚本，AI 可自行验证玩法与画面。
 
 ## 探索方向（待补充）
 

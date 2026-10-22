@@ -1,0 +1,33 @@
+[gd_scene load_steps=6 format=3 uid="uid://bplanet0player01"]
+
+[ext_resource type="Script" path="res://scripts/planet.gd" id="1_planet"]
+[ext_resource type="Shader" path="res://shaders/planet.gdshader" id="2_shader"]
+
+[sub_resource type="SphereMesh" id="SphereMesh_planet"]
+radius = 1.0
+height = 2.0
+radial_segments = 96
+rings = 64
+
+[sub_resource type="ShaderMaterial" id="ShaderMaterial_planet"]
+shader = ExtResource("2_shader")
+
+[sub_resource type="SphereShape3D" id="SphereShape3D_planet"]
+radius = 0.9
+
+[node name="Planet" type="RigidBody3D"]
+collision_layer = 1
+collision_mask = 1
+gravity_scale = 0.0
+linear_damp = 0.0
+angular_damp = 1.0
+script = ExtResource("1_planet")
+
+[node name="CollisionShape3D" type="CollisionShape3D" parent="."]
+shape = SubResource("SphereShape3D_planet")
+
+[node name="MeshRoot" type="Node3D" parent="."]
+
+[node name="PlanetMesh" type="MeshInstance3D" parent="MeshRoot"]
+mesh = SubResource("SphereMesh_planet")
+material_override = SubResource("ShaderMaterial_planet")
