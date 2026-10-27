@@ -1,0 +1,10 @@
+# Normalize EOL for all files that Git considers text files.
+# Repo-wide so root docs and ai/ scripts stay LF on checkout on Windows
+# (projects/planet/ already carried this rule from the Godot scaffold).
+* text=auto eol=lf
+
+# Real binaries must never be touched.
+*.png binary
+*.jpg binary
+*.webp binary
+*.zip binary
