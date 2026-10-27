@@ -22,20 +22,35 @@ AI2Godot/
 
 - **Godot MCP 桥**：Claude 通过 MCP 直接操作 Godot 编辑器与工程（建场景、跑项目、抓报错）。
   配置见 `.mcp.json`，接入过程与踩坑见 [docs/ai-godot-mcp.md](docs/ai-godot-mcp.md)。
+- **回归跑批 `ai/scripts/run_checks.py`**：一条命令跑完 planet 的全部自测
+  （4 个镜头角度的操作映射检查 + 18s 玩法自测 + 60s 平衡测试 + 6 个演化阶段截图），
+  输出 PASS/FAIL 汇总表；截图落在 `build/shots/`（已忽略），AI 直接看图判断外观。
+  零依赖，只用 Python 标准库，Godot 路径从 `GODOT_PATH` 或 `.mcp.json` 自动定位。
+
+  ```bash
+  python ai/scripts/run_checks.py          # 全套，约 2 分钟
+  python ai/scripts/run_checks.py --quick  # 只跑逻辑检查，约 35 秒
+  ```
 
 ## 已完成的实验
 
 - **[planet](projects/planet/)** — 太空版大鱼吃小鱼。从陨石靠吸收碎石成长为
   行星、恒星、白矮星，最终坍缩成黑洞。全程序化着色器，无外部美术资源。
-  带自测脚本，AI 可自行验证玩法与画面。
+  环绕相机（鼠标/右半屏拖动转视角，移动方向跟随镜头），支持桌面与手机。
+  带自测脚本（`--selftest` / `--selftest-long` / `--dirtest` / `--stage=N --shot`），
+  AI 可自行验证玩法、平衡与画面。
 
-## 探索方向（待补充）
+## 探索方向
 
+- [x] **代码辅助**：AI 生成 / 修改 GDScript，并自动验证能不能跑。
+      已在 planet 实验里跑通闭环（dev 自测开关 + `ai/scripts/run_checks.py` + 截图回看），
+      可复用的提示词见 [`ai/prompts/planet-iterate.md`](ai/prompts/planet-iterate.md)。
 - [ ] **关卡 / 内容程序化生成**：让 LLM 产出关卡描述或 NPC 对话，Godot 解析后生成场景。
 - [ ] **AI 驱动 NPC**：用 LLM 作为 NPC 的"大脑"，实时对话与决策。
-- [ ] **代码辅助**：用 AI 生成 / 补全 GDScript，并验证能否直接跑。
 - [ ] **智能体编排**：多个 AI 角色在 Godot 里协作或对抗。
 - [ ] **资源生成**：AI 生成美术、音频描述并落进 Godot。
+
+进度与结论记录在 [docs/exploration.md](docs/exploration.md)。
 
 ## 工作流
 
