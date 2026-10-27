@@ -7,12 +7,14 @@ const WorldScript := preload("res://scripts/world.gd")
 const HUDScript := preload("res://scripts/hud.gd")
 const FXScript := preload("res://scripts/fx.gd")
 const TouchScript := preload("res://scripts/touch_controls.gd")
+const CameraRigScript := preload("res://scripts/camera_rig.gd")
 
 var world: Node3D
 var planet: RigidBody3D
 var hud: CanvasLayer
 var fx: Node3D
 var camera: Camera3D
+var camera_rig: Node3D
 var touch: CanvasLayer
 
 var _threat_timer := 0.0
@@ -67,8 +69,10 @@ func _setup_environment() -> void:
 	var sky_mat := ProceduralSkyMaterial.new()
 	sky_mat.sky_top_color = Color(0.02, 0.03, 0.08)
 	sky_mat.sky_horizon_color = Color(0.06, 0.08, 0.16)
-	sky_mat.ground_bottom_color = Color(0.01, 0.01, 0.03)
-	sky_mat.ground_horizon_color = Color(0.04, 0.05, 0.10)
+	# Match the ground half of the sky to the horizon colour, otherwise the
+	# orbit camera can pan onto a visible seam where sky meets "ground".
+	sky_mat.ground_bottom_color = Color(0.06, 0.08, 0.16)
+	sky_mat.ground_horizon_color = sky_mat.sky_horizon_color
 	sky.sky_material = sky_mat
 	env.sky = sky
 
@@ -93,10 +97,10 @@ func _setup_environment() -> void:
 	add_child(sun)
 
 	camera = get_node_or_null("Camera3D") as Camera3D
-	if camera:
-		# Keep the horizontal field constant so a portrait phone sees as much
-		# of the play field as a landscape desktop.
-		camera.keep_aspect = Camera3D.KEEP_WIDTH
+
+	camera_rig = CameraRigScript.new()
+	camera_rig.name = "CameraRig"
+	add_child(camera_rig)
 
 
 func _spawn_world() -> void:
@@ -126,6 +130,15 @@ func _spawn_world() -> void:
 	hud = HUDScript.new()
 	add_child(hud)
 	hud.bind(planet)
+
+	# Point the camera rig at the player and snap it into place on spawn.
+	if camera_rig:
+		camera_rig.target = planet
+		camera_rig.snap()
+	if planet:
+		planet.camera_rig = camera_rig
+		if touch:
+			planet.touch_controls = touch
 
 	_threat_timer = 0.0
 

@@ -6,6 +6,10 @@
 
 支持 **桌面（键鼠）** 与 **手机（触屏摇杆）** 两种操作，UI 按屏幕尺寸自动缩放。
 
+| 行星阶段 | 黑洞终局 |
+|---|---|
+| ![planet](../../docs/screenshots/stage2-planet.png) | ![black hole](../../docs/screenshots/stage5-black-hole.png) |
+
 ## 运行
 
 ```bash
@@ -23,8 +27,8 @@ Godot_v4.7.2-stable_win64.exe --path projects/planet --resolution 390x844
 
 | 平台 | 操作 |
 |---|---|
-| 桌面 | `WASD` / 方向键移动 |
-| 手机 | 按住屏幕左半边拖动，虚拟摇杆控制方向 |
+| 桌面 | `WASD` / 方向键移动（方向相对于镜头朝向），**按住左键拖动**旋转视角 |
+| 手机 | 屏幕**左半边**按住拖动 = 虚拟摇杆；**右半边**拖动 = 旋转视角 |
 | 通用 | `Esc` 退出，死亡后 `R` 重开 |
 
 ## 玩法
@@ -60,9 +64,9 @@ Godot_v4.7.2-stable_win64.exe --path projects/planet --resolution 390x844
 ## 移动端适配
 
 - 渲染器切到 `mobile`（Forward Mobile），`project.godot` 里已配置。
-- 相机 `keep_aspect = KEEP_WIDTH`，竖屏手机能看到和横屏桌面一样的横向视野。
+- 相机 `keep_aspect = KEEP_WIDTH`（在 `camera_rig.gd` 里设置），竖屏手机能看到和横屏桌面一样的横向视野。
 - HUD 按 `min(屏宽, 屏高) / 720` 缩放，字号与边距在手机上自动收小。
-- 触屏摇杆只在实际有触摸屏的设备上显示，桌面端不出现。
+- 触屏摇杆只在实际有触摸屏的设备上显示，桌面端不出现；摇杆占左半屏，右半屏留给视角旋转，两边各自按 `index` 跟踪，互不干扰。
 - 屏幕左上角的 `II` 按钮暂停。
 
 ### 导出
@@ -98,10 +102,16 @@ Web 导出不需要额外 SDK，可直接在手机上用浏览器打开测试。
 - 大气辉光用 fresnel 边缘光近似，不需要额外壳层几何体。
 - `tint` / `heat` 两个 uniform 给掠夺者染色并在追击时发红光，玩家和掠夺者共用同一个着色器。
 
-### 生长与相机
+### 镜头与生长（CameraRig）
 
 - 半径 `base + sqrt(mass) * k`，`sqrt` 让前期成长感明显、后期不至于爆炸。
-- 相机距离随半径线性拉远（`radius * 6.5 + 9`），任何阶段都在画面内。
+- 镜头由 `scripts/camera_rig.gd` 统一管理：以玩家为中心的**球坐标环绕相机**，
+  距离随半径线性拉远（`radius * 6.5 + 9`），任何阶段都在画面内。
+- `yaw`（环绕）由鼠标拖动 / 触屏右半屏拖动控制；`pitch` 限制在 **6°~78°**：
+  低于 6° 会穿到碎片平面下方，还会把天空的地平线接缝切进战场。
+- **移动方向相对于镜头朝向**：`planet.gd` 调 `camera_rig.input_to_world(input)`
+  把屏幕输入映射到地面平面，转视角之后「上」依然是屏幕里的前。
+- 相机 `keep_aspect = KEEP_WIDTH` 也挪到了 rig 里，桌面/竖屏手机视野一致。
 
 ### 引力与吞并
 
@@ -123,23 +133,62 @@ Web 导出不需要额外 SDK，可直接在手机上用浏览器打开测试。
 # 截取某个演化阶段的画面
 ... --path . -- --stage=3 --shot --shot-path=E:/out.png
 
+# 从指定角度截图（验证环绕镜头；--capture-at 调整等待秒数）
+... --path . -- --stage=3 --shot --yaw=135 --pitch=55 --shot-path=E:/out.png
+
+# 操作映射自测：模拟按四个方向，检查移动方向是否跟随镜头朝向
+... --headless --path . -- --dirtest
+... --headless --path . -- --dirtest --yaw=135   # 先把镜头转 135° 再测
+
 # 玩法自测：自动吃 18 秒，报告质量增长和阶段变化
 ... --path . -- --selftest
 
 # 60 秒平衡性测试：报告存活、峰值质量、阶段序列
 ... --path . -- --selftest-long
 
+# 换随机种子（默认 1729，固定种子才可比）
+... --path . -- --selftest --seed=4321
+
 # 强制刷出掠夺者，方便看外观
 ... --path . -- --stage=3 --show-rival --shot --shot-path=E:/out.png
+```
+
+`--dirtest` 的输出（镜头转到 135° 后依然全绿，说明移动是镜头相对的）：
+
+```
+[dirtest] yaw=135.0
+[dirtest] ui_up: PASS  forward=1.00 right=0.00
+[dirtest] ui_down: PASS  forward=-1.00 right=0.00
+[dirtest] ui_right: PASS  forward=-0.00 right=1.00
+[dirtest] ui_left: PASS  forward=-0.00 right=-1.00
+[dirtest] RESULT: PASS
 ```
 
 `--selftest-long` 的输出：
 
 ```
+[selftest] seed=1729
 [selftest] start mass=1.00 duration=60s
-[selftest] end mass=1267.69 peak=1267.69 grew=true stages=[1, 2, 3, 4, 5]
+[selftest] end mass=1861.28 peak=1861.28 grew=true stages=[1, 2, 3, 4, 5]
 [selftest] debris=0 rivals=0 rivals_seen=2 note=survived
 [selftest] RESULT: PASS
+```
+
+自测机器人会像个正常玩家那样玩：躲开能吞掉自己的掠夺者、去追比自己小的掠夺者。
+随机数默认按固定种子（1729）初始化，世界布局和掠夺者刷新因此可复现 ——
+不加种子时同一份代码会随机红，等于没有检查。
+
+判定看 `grew` / `stages` / `note=survived`，不要盯具体质量：headless 的帧间隔不固定，
+同一份代码的 `end mass` 每次会波动（18 秒实测 106 / 231 / 806 都出现过）。
+
+### 一条命令跑完所有检查
+
+上面的开关全部封在 `ai/scripts/run_checks.py` 里（4 个 dirtest 角度 + 18s 玩法 +
+60s 平衡 + 6 个阶段截图），改完代码跑它就能拿到绿/红，截图落在 `build/shots/`（已忽略）：
+
+```bash
+python ai/scripts/run_checks.py          # 全部，约 2 分钟
+python ai/scripts/run_checks.py --quick  # 只跑逻辑检查，约 35 秒
 ```
 
 ## 文件结构
@@ -152,14 +201,16 @@ projects/planet/
 │   ├── main.tscn           # 根场景：环境、灯光、相机
 │   └── planet.tscn         # 玩家星球
 ├── scripts/
-│   ├── main.gd             # 组装世界、FX、触屏、重开
-│   ├── planet.gd           # 玩家：移动、生长、阶段、相机
+│   ├── main.gd             # 组装世界、FX、触屏、相机 rig、重开
+│   ├── planet.gd           # 玩家：移动、生长、阶段
+│   ├── camera_rig.gd       # 环绕相机：yaw/pitch 拖拽、随体型拉远、输入→世界方向
 │   ├── rival.gd            # 掠夺者 AI：追击/逃跑/互相吞噬
 │   ├── debris.gd           # 碎片
 │   ├── world.gd            # 生成、引力、吞并规则、黑洞终局
 │   ├── fx.gd               # 粒子爆发、屏幕震动
 │   ├── hud.gd              # 响应式 HUD、阶段横幅、威胁提示
 │   ├── touch_controls.gd   # 虚拟摇杆 + 暂停
+│   ├── dirtest.gd          # 操作映射自测（含 --yaw 旋转镜头后复测）
 │   ├── dev_screenshot.gd
 │   └── selftest.gd
 └── shaders/

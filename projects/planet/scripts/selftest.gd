@@ -4,8 +4,11 @@ extends Node
 ##
 ##   -- --selftest          steer toward edible debris for N seconds, report growth
 ##   -- --selftest-long     same but 60s, reports survival and peak mass
+##   -- --seed=1729         override the RNG seed used for the world
 ##
 ## Lets the AI verify gameplay balance without watching the screen.
+## The RNG is seeded on purpose: an unseeded run is luck, so it flakes and tells
+## you nothing about whether a change made the game better or worse.
 
 var _elapsed := 0.0
 var _start_mass := 0.0
@@ -17,6 +20,7 @@ var _duration := 18.0
 var _running := false
 var _rivals_seen := 0
 var _rivals_eaten := 0
+var _seed := 1729
 
 
 func _ready() -> void:
@@ -28,6 +32,14 @@ func _ready() -> void:
 		_running = true
 	if not _running:
 		set_process(false)
+		return
+	for a in args:
+		if a.begins_with("--seed="):
+			_seed = int(a.split("=", true, 1)[1])
+	# Seeded here because this node is ready before Main builds the world,
+	# so every randf() in world.gd / rival.gd / debris.gd follows this seed.
+	seed(_seed)
+	print("[selftest] seed=%d" % _seed)
 
 
 func _process(delta: float) -> void:
@@ -57,7 +69,9 @@ func _process(delta: float) -> void:
 		if rivals_now:
 			_rivals_seen = maxi(_rivals_seen, rivals_now.size())
 
-	# Steer toward the nearest edible debris to prove absorption works.
+	# Steer like a competent player: run from anything that can eat us, otherwise
+	# chase the nearest edible debris (or an edible rival, they are fat targets).
+	# A bot that walks into a predator tells you nothing about balance.
 	if _world:
 		var best = null
 		var best_d := 1e9
@@ -70,8 +84,33 @@ func _process(delta: float) -> void:
 			if dist < best_d:
 				best_d = dist
 				best = d
-		if best:
-			var dir: Vector3 = (best.global_position - _planet.global_position).normalized()
+
+		var flee := Vector3.ZERO
+		var prey: Node3D = null
+		var prey_d := 1e9
+		for r in _world.get("_rivals"):
+			if r == null or not is_instance_valid(r) or r.consumed:
+				continue
+			var rdist: float = r.global_position.distance_to(_planet.global_position)
+			if r.mass_value >= _planet.mass_value * 1.12:
+				if rdist < 34.0:
+					var away: Vector3 = (_planet.global_position - r.global_position).normalized()
+					# Closer predator means a stronger push, and the escape path
+					# keeps its sideways component so we do not back straight into it.
+					flee += away * (1.0 - rdist / 34.0) * 3.0
+			elif _planet.mass_value >= r.mass_value * 1.12 and rdist < prey_d:
+				prey_d = rdist
+				prey = r
+
+		var dir := Vector3.ZERO
+		if flee != Vector3.ZERO:
+			dir = flee.normalized()
+		elif prey and prey_d < best_d:
+			dir = (prey.global_position - _planet.global_position).normalized()
+		elif best:
+			dir = (best.global_position - _planet.global_position).normalized()
+
+		if dir != Vector3.ZERO:
 			_planet.linear_velocity += dir * 30.0 * delta
 
 	if _elapsed >= _duration:

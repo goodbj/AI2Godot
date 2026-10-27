@@ -120,7 +120,9 @@ void fragment() {
 	float granule = fbm(dir * 26.0 + vec3(spin * 0.8, spin * 0.3, 0.0));
 	float cell = fbm(dir * 11.0 - vec3(0.0, spin * 0.5, 0.0));
 	vec3 star_col = mix(vec3(0.85, 0.22, 0.02), vec3(1.0, 0.72, 0.20), cell);
-	star_col = mix(star_col, vec3(1.0, 0.97, 0.80), granule * 0.65);
+	// Keep the hot speckles subtle: with glow + ACES a strong pull toward
+	// white washes the whole disc out and the granulation disappears.
+	star_col = mix(star_col, vec3(1.0, 0.97, 0.80), granule * 0.35);
 	// Limb darkening so the disc reads as a sphere, not a flat cutout
 	float limb = pow(clamp(dot(n, view_dir), 0.0, 1.0), 0.45);
 	star_col *= 0.55 + 0.75 * limb;
@@ -146,7 +148,9 @@ void fragment() {
 
 	if (stage == 3) {
 		albedo = vec3(0.0);
-		emission = star_col * 0.85 + vec3(1.0, 0.45, 0.08) * pow(rim, 1.6) * 2.2;
+		// Base stays under 1.0 so the disc keeps its orange-yellow structure
+		// instead of clipping to white; the environment glow does the bloom.
+		emission = star_col * 0.55 + vec3(1.0, 0.45, 0.08) * pow(rim, 1.6) * 2.4;
 		rough = 1.0;
 	} else if (stage == 4) {
 		albedo = vec3(0.02);

@@ -42,8 +42,9 @@ var alive := true
 ## Optional touch joystick, assigned by the game root.
 var touch_controls: CanvasLayer = null
 
-var _camera: Camera3D
-var _cam_offset := Vector3(0.0, 4.5, 11.0)
+## Camera rig that owns the view; also defines the movement frame.
+var camera_rig: Node3D = null
+
 var _spin := 0.0
 var _shader_mat: ShaderMaterial
 var _is_black_hole := false
@@ -53,7 +54,6 @@ var _is_black_hole := false
 
 func _ready() -> void:
 	add_to_group("planet")
-	_camera = get_viewport().get_camera_3d()
 	_shader_mat = mesh_root.get_child(0).material_override as ShaderMaterial
 	_update_size()
 
@@ -75,9 +75,9 @@ func _physics_process(delta: float) -> void:
 	if input.length() > 1.0:
 		input = input.normalized()
 
-	if _camera and input != Vector2.ZERO:
-		var cam_basis := _camera.global_transform.basis
-		var dir := (cam_basis.x * input.x - cam_basis.z * input.y).normalized()
+	if camera_rig and input != Vector2.ZERO:
+		# Movement is relative to where the camera is looking.
+		var dir: Vector3 = camera_rig.input_to_world(input)
 		apply_central_force(dir * thrust_force * mass_value)
 
 	# Speed cap
@@ -94,14 +94,6 @@ func _physics_process(delta: float) -> void:
 func _process(delta: float) -> void:
 	if not alive:
 		return
-
-	if _camera:
-		# Pull the camera back as the body grows so it always stays in frame.
-		var dist := get_radius() * 6.5 + 9.0
-		var want := Vector3(0.0, dist * 0.42, dist)
-		var target := global_position + want
-		_camera.global_position = _camera.global_position.lerp(target, 8.0 * delta)
-		_camera.look_at(global_position, Vector3.UP)
 
 	if _shader_mat:
 		_shader_mat.set_shader_parameter("stage", stage)

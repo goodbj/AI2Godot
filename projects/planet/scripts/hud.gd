@@ -68,8 +68,8 @@ func _ready() -> void:
 
 func _hint_text() -> String:
 	if DisplayServer.is_touchscreen_available() or OS.has_feature("mobile"):
-		return "drag the left side to move  -  swallow what is smaller than you"
-	return "WASD / Arrows to move  -  swallow what is smaller than you"
+		return "left side: move   -   right side: drag to look around"
+	return "WASD to move  -  drag the mouse to look around"
 
 
 func _make_label(parent: Control, pos: Vector2, size: int, color: Color) -> Label:
