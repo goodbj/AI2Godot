@@ -26,7 +26,7 @@ updated: 2026-11-08
 | 本节点编号 | `05_00`（部门主管，本职即分发器，不设 `_01` 分发岗） |
 | 本节点显示名 | 05_AI2Godot 游戏开发部门协调员 |
 | 本节点绝对路径 | `E:\AI\orca-worktrees\05_AI2Godot\AI2Godot_05_00` |
-| 本节点协调信道 ID | `run_95aa8a77ffa2`（开工必 `run-use` 认领；原 AGENTS.md 记 `run_6fb46ec056ec` 已与通讯录不一致，以 `orca orchestration run-list --json` 现役值为准） |
+| 本节点协调信道 ID | `run_0ad1dcd15649`（开工必 `run-use` 认领；原 AGENTS.md 记 `run_6fb46ec056ec` 与 `run_95aa8a77ffa2` 均已失效，以 `orca orchestration run-list --json` 现役值为准） |
 | 直属上层节点 | `00_01`（公共簇信箱 `run_1cd4e1700daf`） |
 | 本节点容器仓 | `E:\AI\orca-worktrees\05_AI2Godot\AI2Godot_05_Main`（从零 init，不 fork） |
 | 直辖下层节点 | `05_02~05_04`（子项目主管 / 执行层，按需建；XX_00 本职即分发器，不设 `_01`） |
@@ -41,8 +41,8 @@ updated: 2026-11-08
 
 ## 派工/回报（XX_00 本职即分发器）
 
-- 走本节点专属 Run 邮箱 `run_95aa8a77ffa2`；开工第一件事 `orca orchestration run-use --id run_95aa8a77ffa2` 认领，治 `consumer_fenced`。
-- 收信 `orca orchestration check --run run_95aa8a77ffa2 --json`，处理完 `--ack <deliveryId>` 才能收下一批（FIFO 卡批）。
+- 走本节点专属 Run 邮箱 `run_0ad1dcd15649`；开工第一件事 `orca orchestration run-use --id run_0ad1dcd15649` 认领，治 `consumer_fenced`。
+- 收信 `orca orchestration check --run run_0ad1dcd15649 --json`，处理完 `--ack <deliveryId>` 才能收下一批（FIFO 卡批）。
 - 找 00_01 公共簇投 `run_1cd4e1700daf`。
 - 任务板巡检：`gh issue list --repo goodbj/AI_Memory --state open --label "部门-05 AI2Godot"` 看派给本部门的活；领到的在本部门仓库建 issue 跟踪。
 
